@@ -1,0 +1,271 @@
+from sqlite3 import *
+from appJar import gui
+from SQL import *
+import re 
+#from test3 import *
+
+############################
+########TO DO LIST##########
+############################
+#delte user option                      #done
+#randomly generate coins                #done
+#screen after game is complete:         #partially done 
+#cop collides with player               #partially done
+#player reaches end goal                #partially done  #####both need testing
+#add diffculty levels to game           #
+#menu for maze difficulty               #
+#leaderboards                           #
+#menu for leaderboards                  #
+#code queue stuff                       # 
+#WRITE UP!!!!!!!!!!!                    #
+#if time:
+#pickups                                #
+#knife in ground                        #
+#table for robber icons                 # 
+############################
+############################
+
+#username= sia246
+#password= Siaxmba24.
+
+app=gui() 
+
+#decides what each button does for Main Screen
+def press(btn):
+    if btn=="Login":
+        app.showSubWindow("Login")
+        app.hide()
+        return
+    elif btn=="Create User":
+        app.showSubWindow("Create User")
+        app.hide()
+        return
+    elif btn=="Delete Account":
+        app.showSubWindow("Delete Account")
+        app.hide()
+        return
+    elif btn=="Quit":
+        app.stop()
+        return
+
+def LoginBtns(btn):
+    if btn=="Go Back":
+        app.show()
+        app.hideSubWindow("Login")
+        return
+    elif btn=="Continue":
+        Username=app.getEntry("Username: ")
+        Password=app.getEntry("Password: ")
+        if authenticateUser(Username,customHash(Password))==True:
+            app.hideSubWindow("Login")
+            #ends login screen and starts game screen
+            app.showSubWindow("Game")
+            #app.errorBox("game started","enjoy")
+            app.hide()
+            #startGame()
+            return
+            
+        elif authenticateUser(Username,customHash(Password))==False:
+            app.errorBox("Error!","User is not in the system or password is invalid!")
+            return
+
+def user(btn):
+    if btn=="Return":
+        app.show()
+        app.hideSubWindow("Create User")
+    elif btn=="Create":
+        Username=app.getEntry("New Username: ")
+        pass1=app.getEntry("New Password: ") 
+        pass2=app.getEntry("Confirm Password: ")
+
+        if usernameExists(Username):
+            app.errorBox("Error!","That username has already been taken!")
+            return
+
+        if not strongPassword(pass1):
+            app.errorBox(
+                "Weak password!",
+                "Password must contain at least 8 characters,\n"
+                "including 1 uppercase character, 1 number and 1 special character."
+            )
+            return
+
+        elif strongPassword(pass1):
+            if pass1!=pass2:
+                app.errorBox("Error!","Passwords don't match!")
+                return
+            elif pass1==pass2:
+                Password=customHash(pass1)
+                addPlayer(Username,Password)
+                app.hideSubWindow("Create User")
+                app.show()
+                return
+
+def delete(btn):
+    if btn=="Back":
+        app.show()
+        app.hideSubWindow("Delete Account")
+    elif btn=="Delete":
+        Username=app.getEntry("Username to delete: ")
+        Password=app.getEntry("Password to delete: ")
+
+        if authenticateUser(Username,customHash(Password))==True:
+            deletePlayer(Username,Password)
+            app.infoBox("Success!","Account successfully deleted.")
+            app.hideSubWindow("Delete Account")
+            app.show()
+        elif authenticateUser(Username,customHash(Password))==False:
+            app.errorBox("Error!","Details do not match!")
+
+def gameOver(btn):
+    if btn=="Quit Game":
+        app.stop()
+    elif btn=="Play again":
+        app.hideSubWindow("Game Over")
+        #app.removeAllWidgets()
+        for widget in app.getAllWidgets():
+            app.removeWidget(widget)
+        app.after(100,startPage)
+
+def leaderboard(btn):
+    if btn=="Easy":
+        app.hideSubWindow("Leaderboard")
+    elif btn=="Hard":
+        app.hideSubWindow("Leaderboard") 
+    elif btn=="Return Back":
+        app.hideSubWindow("Leaderboard")
+        app.showSubWindow("Game")
+
+def play(btn):
+    if btn=="Start Game":
+        app.hideSubWindow("Game")
+    elif btn=="View Leaderboards":
+        app.hideSubWindow("Game")
+        app.showSubWindow("Leaderboard")
+        if app.getOptionBox("Select Difficulty: ")=="Easy":
+            app.hideSubWindow("Leaderboard")
+            #add function to show leaderboard
+            app.showSubWindow("Easy leaderboard")
+        elif app.getOptionBox("Select Difficulty: ")=="Hard":
+            app.hideSubWindow("Leaderboard")
+            #add function to show leaderboard
+            app.showSubWindow("Hard leaderboard")
+
+
+def startPage():
+    #app.startLabelFrame("Login Page")
+    #login page details
+    app.setTitle("Main Screen")
+    app.setSize(1200,600)
+    app.setBgImage("sc_bg.gif")
+    app.setLocation(200,100)
+    app.setSticky("s")
+    app.addButton("Login", press,row=40,column=0) #,colspan=2)
+    app.addButton("Create User", press,row=40,column=1) #,colspan=0)
+    app.addButton("Delete Account", press,row=40,column=2) #,colspan=2)
+    app.addButton("Quit",press,row=41,column=1)
+
+    app.setPadding([10,20])
+    app.setSticky("s")
+
+    GameOverSubwindow()
+    deleteAccountSubwindow()
+    createUserSubwindow()
+    loginSubwindow()
+    leaderboardSubwindow()
+    HardLeaderboard()
+    EasyLeaderboard() 
+    gamePage() 
+
+def gamePage():
+    app.startSubWindow("Game")
+    app.setTitle("Game")
+    app.setSize(1200,600)
+    app.setBgImage("sc_bg.gif")
+    app.addButton("Start Game", play)
+    app.addButton("View Leaderboards", play)
+    app.stopSubWindow()
+
+def HardLeaderboard():
+    app.startSubWindow("Hard leaderboard")
+    app.addLabel("HardLeaderboard","Top 10 Players")
+    #app.addLabel(" ") 
+    app.stopSubWindow()
+
+def EasyLeaderboard():
+    app.startSubWindow("Easy leaderboard")
+    app.addLabel("EasyLeaderboard","Top 10 Players")
+    #app.addLabel(" ")
+    app.stopSubWindow()
+
+def leaderboardSubwindow():
+    #subwindow for leaderboard screen
+    app.startSubWindow("Leaderboard")
+    app.setFont(40)
+    app.addLabel("Leaderboard","Top 10 Players")
+    app.setFont(10) 
+    app.addLabel("Select Difficulty: ")
+    app.addButtons(["Easy","Hard"],leaderboard)
+    app.addButton("Return Back",leaderboard)
+    app.stopSubWindow()
+
+def loginSubwindow():
+    #subwindow for login screen
+    app.startSubWindow("Login",modal=True)
+    app.addLabelEntry("Username: ")
+    app.addLabelSecretEntry("Password: ")
+    app.addButtons(["Go Back","Continue"],LoginBtns)
+    app.stopSubWindow()
+
+def createUserSubwindow():
+    #subwindow for create user screen
+    app.startSubWindow("Create User")
+    app.addLabelEntry("New Username: ")
+    app.addLabelEntry("New Password: ")
+    app.addLabelEntry("Confirm Password: ")
+    app.addButtons(["Return","Create"],user)
+    app.stopSubWindow()
+
+def deleteAccountSubwindow():
+    #subwindow for delete account screen
+    app.startSubWindow("Delete Account")
+    app.addLabelEntry("Username to delete: ")
+    app.addLabelEntry("Password to delete: ")
+    app.addButtons(["Back","Delete"],delete)
+    app.stopSubWindow()
+
+def GameOverSubwindow():
+    app.startSubWindow("Game Over")
+    app.addFlashLabel("You Lose, Game Over!!")
+    app.addButtons(["Play again","Quit Game"],gameOver)
+    app.stopSubWindow()
+
+# def gameOver(btn,gameOverApp):
+#     if btn=="Quit Game":
+#         gameOverApp.stop()
+#     elif btn=="Play again":
+#         gameOverApp.hide()
+#         app=gui()
+#         startPage()
+#         app.go()
+
+# def over(btn):
+#     if btn=="Quit Game":
+#         app.stop()
+#     elif btn=="Play again":
+#         #app.hide()
+#         for widget in app.getAllWidgets():
+#             app.removeWidget(widget)
+#         #app.removeAllWidgets()
+#         app.after(100,startPage)
+
+# def GameOverPage():
+#     app.setTitle("Game Over!")
+#     app.setSize(600,600)
+#     app.addFlashLabel("You Lose, Game Over!!")
+#     app.addButtons(["Play again","Quit Game"],over)
+
+#showGameOver()
+startPage()  
+app.go()
+#print(app.getSubWindowNames())
